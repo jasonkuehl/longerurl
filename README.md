@@ -9,11 +9,12 @@ While everyone else is busy shortening URLs, we're doing the exact opposite. Ent
 ## Features
 
 - 🔗 Convert any URL into an absurdly long one
-- 📏 Adjustable length (100 to 2000+ characters)
-- 🎲 Random gibberish generation
+- 📏 Adjustable length (500 to 8000 characters)
+- 🎲 Deterministic dial-up modem sound generation
 - 📋 One-click copy to clipboard
 - 📊 Stats showing how much longer your URL is now
 - 🐳 Docker ready
+- ♻️ **Stateless** - no database needed, links survive restarts
 
 ## Quick Start
 
@@ -74,7 +75,7 @@ Redirects to the original URL.
 
 ## Note
 
-This service uses in-memory storage. URLs will be lost when the container restarts. For persistent storage, you'd need to add a database (Redis, SQLite, etc.).
+This service is **stateless** - URLs are deterministically generated based on the input URL. The same input will always produce the same long URL, so links work even after server restarts. No database required!
 
 ## Why?
 

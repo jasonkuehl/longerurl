@@ -1,12 +1,14 @@
 package main
 
 import (
-	"crypto/rand"
+	"crypto/sha256"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,18 +21,7 @@ import (
 //go:embed templates/*
 var templateFS embed.FS
 
-// In-memory storage with expiration
-var (
-	urlStore = make(map[string]urlEntry)
-	mu       sync.RWMutex
-)
-
-type urlEntry struct {
-	URL       string
-	CreatedAt time.Time
-}
-
-// Rate limiting
+// Rate limiting (no URL storage needed anymore!)
 var (
 	rateLimiter = make(map[string][]time.Time)
 	rateMu      sync.Mutex
@@ -41,13 +32,15 @@ const (
 	maxRequestSize  = 4096 // Max request body size
 	rateLimit       = 30   // Requests per minute per IP
 	rateLimitWindow = time.Minute
-	urlExpiration   = 24 * time.Hour // URLs expire after 24 hours
-	maxStoredURLs   = 100000         // Maximum URLs in memory
+	urlDelimiter    = "_BEEPBOOP_" // Delimiter between encoded URL and padding
+	minCharCount    = 100          // Minimum URL length
+	maxCharCount    = 8000         // RFC 7230 practical max
 )
 
 type LengthenRequest struct {
-	URL    string `json:"url"`
-	Length int    `json:"length"` // How ridiculously long (1-10 scale)
+	URL       string `json:"url"`
+	Length    int    `json:"length"`    // Legacy: 1-10 scale
+	CharCount int    `json:"charCount"` // Direct character count (100-8000)
 }
 
 type LengthenResponse struct {
@@ -67,9 +60,6 @@ func main() {
 		log.Fatal("Invalid PORT value")
 	}
 
-	// Start cleanup goroutine
-	go cleanupExpiredURLs()
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", securityHeaders(handleHome))
 	mux.HandleFunc("/api/lengthen", securityHeaders(handleLengthen))
@@ -85,6 +75,7 @@ func main() {
 	}
 
 	log.Printf("Make A Longer Link running on http://localhost:%s", port) // #nosec G706 - port validated as numeric
+	log.Printf("Stateless mode: URLs are deterministic, no database needed!")
 	log.Fatal(server.ListenAndServe())
 }
 
@@ -186,22 +177,6 @@ func validateURL(inputURL string) (string, error) {
 	return inputURL, nil
 }
 
-// Cleanup expired URLs periodically
-func cleanupExpiredURLs() {
-	ticker := time.NewTicker(10 * time.Minute)
-	for range ticker.C {
-		mu.Lock()
-		now := time.Now()
-		for slug, entry := range urlStore {
-			if now.Sub(entry.CreatedAt) > urlExpiration {
-				delete(urlStore, slug)
-			}
-		}
-		mu.Unlock()
-		log.Printf("Cleanup complete. URLs in store: %d", len(urlStore))
-	}
-}
-
 func handleHome(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -254,32 +229,28 @@ func handleLengthen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if we've hit max storage
-	mu.RLock()
-	storeSize := len(urlStore)
-	mu.RUnlock()
-	if storeSize >= maxStoredURLs {
-		http.Error(w, "Service temporarily at capacity. Please try again later.", http.StatusServiceUnavailable)
-		return
+	// Determine target length
+	var targetLength int
+	if req.CharCount > 0 {
+		// Use direct character count if provided
+		targetLength = req.CharCount
+		if targetLength < minCharCount {
+			targetLength = minCharCount
+		}
+		if targetLength > maxCharCount {
+			targetLength = maxCharCount
+		}
+	} else {
+		// Fall back to legacy 1-10 scale
+		if req.Length < 1 || req.Length > 10 {
+			req.Length = 5
+		}
+		// Length scale: 1 = 500 chars, 10 = 8000 chars (RFC 7230 practical limit)
+		targetLength = 500 + (req.Length-1)*833
 	}
 
-	// Default length scale: 5 (medium absurdity)
-	if req.Length < 1 || req.Length > 10 {
-		req.Length = 5
-	}
-
-	// Generate absurdly long random string
-	// Length scale: 1 = 500 chars, 10 = 8000 chars (RFC 7230 practical limit)
-	charCount := 500 + (req.Length-1)*833
-	longSlug := generateGibberish(charCount)
-
-	// Store the mapping with timestamp
-	mu.Lock()
-	urlStore[longSlug] = urlEntry{
-		URL:       validatedURL,
-		CreatedAt: time.Now(),
-	}
-	mu.Unlock()
+	// Generate deterministic long slug
+	longSlug := encodeURLToSlug(validatedURL, targetLength)
 
 	// Build the long URL
 	host := r.Host
@@ -308,28 +279,63 @@ func handleRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.RLock()
-	entry, exists := urlStore[slug]
-	mu.RUnlock()
-
-	if !exists {
-		http.Error(w, "Link not found. It's too long, even for us!", http.StatusNotFound)
+	// Decode the URL from the slug
+	originalURL, err := decodeSlugToURL(slug)
+	if err != nil {
+		http.Error(w, "Invalid or corrupted link. The dial-up modem gods are displeased!", http.StatusBadRequest)
 		return
 	}
 
-	// Check if expired
-	if time.Since(entry.CreatedAt) > urlExpiration {
-		mu.Lock()
-		delete(urlStore, slug)
-		mu.Unlock()
-		http.Error(w, "Link has expired.", http.StatusGone)
+	// Validate the decoded URL (security check)
+	if _, err := validateURL(originalURL); err != nil {
+		http.Error(w, "Invalid redirect target", http.StatusBadRequest)
 		return
 	}
 
-	http.Redirect(w, r, entry.URL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }
 
-func generateGibberish(length int) string {
+// encodeURLToSlug creates a deterministic long slug from a URL
+// Format: <base64url_encoded_url>_BEEPBOOP_<deterministic_dial_up_sounds>
+func encodeURLToSlug(originalURL string, targetLength int) string {
+	// URL-safe base64 encode the URL
+	encoded := base64.URLEncoding.EncodeToString([]byte(originalURL))
+
+	// Calculate how much padding we need
+	baseLength := len(encoded) + len(urlDelimiter)
+	paddingNeeded := targetLength - baseLength
+	if paddingNeeded < 0 {
+		paddingNeeded = 100 // Minimum padding
+	}
+
+	// Generate deterministic padding based on URL hash
+	padding := generateDeterministicGibberish(originalURL, paddingNeeded)
+
+	return encoded + urlDelimiter + padding
+}
+
+// decodeSlugToURL extracts and decodes the original URL from a slug
+func decodeSlugToURL(slug string) (string, error) {
+	// Find the delimiter
+	idx := strings.Index(slug, urlDelimiter)
+	if idx == -1 {
+		return "", fmt.Errorf("invalid slug format")
+	}
+
+	// Extract the base64 encoded part
+	encoded := slug[:idx]
+
+	// Decode
+	decoded, err := base64.URLEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode URL: %w", err)
+	}
+
+	return string(decoded), nil
+}
+
+// generateDeterministicGibberish creates reproducible dial-up sounds based on URL
+func generateDeterministicGibberish(seed string, length int) string {
 	// Dial-up modem sounds!
 	sounds := []string{
 		"beep", "boop", "borp", "blop", "bloop", "blooop", "bloooop", "blooooop",
@@ -349,12 +355,19 @@ func generateGibberish(length int) string {
 		"bonk", "boink", "bink", "bonnnk",
 	}
 
+	// Create deterministic seed from URL hash
+	hash := sha256.Sum256([]byte(seed))
+	var seedInt int64
+	for i := 0; i < 8; i++ {
+		seedInt = (seedInt << 8) | int64(hash[i])
+	}
+
+	// Use seeded random for deterministic output
+	rng := rand.New(rand.NewSource(seedInt)) // #nosec G404 - not used for security
+
 	var result strings.Builder
 	for result.Len() < length {
-		// Pick a random sound
-		randByte := make([]byte, 1)
-		rand.Read(randByte)
-		sound := sounds[int(randByte[0])%len(sounds)]
+		sound := sounds[rng.Intn(len(sounds))]
 
 		if result.Len() > 0 {
 			result.WriteString("-")

@@ -63,7 +63,7 @@
             font-weight: 500;
         }
 
-        input[type="url"], input[type="text"] {
+        input[type="url"], input[type="text"], input[type="number"] {
             width: 100%;
             padding: 15px 20px;
             border: 2px solid rgba(255, 255, 255, 0.1);
@@ -74,7 +74,7 @@
             transition: all 0.3s ease;
         }
 
-        input[type="url"]:focus, input[type="text"]:focus {
+        input[type="url"]:focus, input[type="text"]:focus, input[type="number"]:focus {
             outline: none;
             border-color: #e94560;
             background: rgba(255, 255, 255, 0.1);
@@ -256,14 +256,13 @@
                 <input type="text" id="url" name="url" placeholder="https://example.com" required>
             </div>
 
-            <div class="slider-group">
-                <label for="length">How ridiculously long? <span id="lengthValue">5</span>/10</label>
-                <input type="range" id="length" name="length" min="1" max="10" value="5">
-                <div class="slider-labels">
-                    <span>Mildly Annoying (500)</span>
-                    <span>RFC Maximum (8000)</span>
+            <div class="input-group">
+                <label for="charCount">How many characters? (100 - 8000, RFC 7230 max)</label>
+                <input type="number" id="charCount" name="charCount" min="100" max="8000" value="2000" placeholder="Enter character count">
+                <div class="slider-labels" style="margin-top: 8px;">
+                    <span>Min: 100</span>
+                    <span>RFC Max: 8000</span>
                 </div>
-                <div class="length-display">~<span id="charCount">3,832</span> characters (RFC 7230 max: 8000)</div>
             </div>
 
             <button type="submit">🚀 MAKE IT LONGER!</button>
@@ -295,21 +294,16 @@
     </div>
 
     <script>
-        const lengthSlider = document.getElementById('length');
-        const lengthValue = document.getElementById('lengthValue');
-        const charCount = document.getElementById('charCount');
-
-        lengthSlider.addEventListener('input', function() {
-            lengthValue.textContent = this.value;
-            const chars = 500 + (this.value - 1) * 833;
-            charCount.textContent = chars.toLocaleString();
-        });
-
         document.getElementById('lengthenForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const url = document.getElementById('url').value;
-            const length = parseInt(document.getElementById('length').value);
+            let charCount = parseInt(document.getElementById('charCount').value);
+            
+            // Enforce limits
+            if (charCount < 100) charCount = 100;
+            if (charCount > 8000) charCount = 8000;
+            document.getElementById('charCount').value = charCount;
 
             try {
                 const response = await fetch('/api/lengthen', {
@@ -317,7 +311,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url, length }),
+                    body: JSON.stringify({ url, charCount }),
                 });
 
                 if (!response.ok) {
