@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make A Longer Link</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .tagline {
+            color: #a0a0a0;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .emoji {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: #fff;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        input[type="url"], input[type="text"] {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="url"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #e94560;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        input::placeholder {
+            color: #666;
+        }
+
+        .slider-group {
+            margin-bottom: 30px;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            color: #a0a0a0;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #e94560 0%, #ff6b6b 100%);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .length-display {
+            text-align: center;
+            color: #e94560;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result h3 {
+            color: #4ade80;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .long-url {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            word-break: break-all;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            color: #e94560;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.85rem;
+        }
+
+        .copy-btn {
+            background: rgba(74, 222, 128, 0.2);
+            border: 1px solid #4ade80;
+            color: #4ade80;
+            padding: 12px 25px;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #4ade80;
+            color: #1a1a2e;
+            box-shadow: 0 10px 30px rgba(74, 222, 128, 0.3);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: #e94560;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">🔗➡️📜</div>
+        <h1>Make A Longer Link</h1>
+        <p class="tagline">Because sometimes URLs just aren't long enough.</p>
+
+        <form id="lengthenForm">
+            <div class="input-group">
+                <label for="url">Enter your tiny, insignificant URL:</label>
+                <input type="text" id="url" name="url" placeholder="https://example.com" required>
+            </div>
+
+            <div class="slider-group">
+                <label for="length">How ridiculously long? <span id="lengthValue">5</span>/10</label>
+                <input type="range" id="length" name="length" min="1" max="10" value="5">
+                <div class="slider-labels">
+                    <span>Mildly Annoying (500)</span>
+                    <span>RFC Maximum (8000)</span>
+                </div>
+                <div class="length-display">~<span id="charCount">3,832</span> characters (RFC 7230 max: 8000)</div>
+            </div>
+
+            <button type="submit">🚀 MAKE IT LONGER!</button>
+        </form>
+
+        <div class="result" id="result">
+            <h3>✅ Your URL is now gloriously long!</h3>
+            <div class="long-url" id="longUrl"></div>
+            <button type="button" class="copy-btn" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="originalLength">0</div>
+                    <div class="stat-label">Original Length</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="newLength">0</div>
+                    <div class="stat-label">New Length</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="multiplier">0x</div>
+                    <div class="stat-label">Times Longer</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>A completely unnecessary service. You're welcome.</p>
+        </div>
+    </div>
+
+    <script>
+        const lengthSlider = document.getElementById('length');
+        const lengthValue = document.getElementById('lengthValue');
+        const charCount = document.getElementById('charCount');
+
+        lengthSlider.addEventListener('input', function() {
+            lengthValue.textContent = this.value;
+            const chars = 500 + (this.value - 1) * 833;
+            charCount.textContent = chars.toLocaleString();
+        });
+
+        document.getElementById('lengthenForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('url').value;
+            const length = parseInt(document.getElementById('length').value);
+
+            try {
+                const response = await fetch('/api/lengthen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url, length }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to lengthen URL');
+                }
+
+                const data = await response.json();
+                
+                document.getElementById('longUrl').textContent = data.long;
+                document.getElementById('originalLength').textContent = data.original.length;
+                document.getElementById('newLength').textContent = data.long.length.toLocaleString();
+                document.getElementById('multiplier').textContent = 
+                    Math.round(data.long.length / data.original.length) + 'x';
+                
+                document.getElementById('result').classList.add('show');
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        function copyToClipboard() {
+            const longUrl = document.getElementById('longUrl').textContent;
+            navigator.clipboard.writeText(longUrl).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                btn.style.background = '#4ade80';
+                btn.style.color = '#1a1a2e';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                    btn.style.color = '';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

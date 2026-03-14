@@ -1,0 +1,12 @@
+services:
+  makealongerlink:
+    build: .
+    container_name: makealongerlink
+    restart: unless-stopped
+    ports:
+      - "60320:8080"
+    environment:
+      - PORT=8080
+    # Optional: Add to your existing network
+    # networks:
+    #   - your_network
