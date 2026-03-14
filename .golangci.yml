@@ -1,27 +1,25 @@
+version: "2"
+
 run:
   timeout: 5m
 
 linters:
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
-    - goimports
     - misspell
     - unconvert
     - gocritic
     - gosec
 
-linters-settings:
-  gosec:
-    excludes:
-      - G104  # Audit errors not checked (we handle this deliberately in some places)
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 50
   max-same-issues: 10

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -36,12 +37,12 @@ var (
 )
 
 const (
-	maxURLLength    = 2048            // Max input URL length
-	maxRequestSize  = 4096            // Max request body size
-	rateLimit       = 30              // Requests per minute per IP
+	maxURLLength    = 2048 // Max input URL length
+	maxRequestSize  = 4096 // Max request body size
+	rateLimit       = 30   // Requests per minute per IP
 	rateLimitWindow = time.Minute
-	urlExpiration   = 24 * time.Hour  // URLs expire after 24 hours
-	maxStoredURLs   = 100000          // Maximum URLs in memory
+	urlExpiration   = 24 * time.Hour // URLs expire after 24 hours
+	maxStoredURLs   = 100000         // Maximum URLs in memory
 )
 
 type LengthenRequest struct {
@@ -61,15 +62,30 @@ func main() {
 		port = "8080"
 	}
 
+	// Validate port to prevent log injection
+	if !regexp.MustCompile(`^[0-9]+$`).MatchString(port) {
+		log.Fatal("Invalid PORT value")
+	}
+
 	// Start cleanup goroutine
 	go cleanupExpiredURLs()
 
-	http.HandleFunc("/", securityHeaders(handleHome))
-	http.HandleFunc("/api/lengthen", securityHeaders(handleLengthen))
-	http.HandleFunc("/r/", securityHeaders(handleRedirect))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", securityHeaders(handleHome))
+	mux.HandleFunc("/api/lengthen", securityHeaders(handleLengthen))
+	mux.HandleFunc("/r/", securityHeaders(handleRedirect))
 
-	log.Printf("🔗 Make A Longer Link running on http://localhost:%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	// Use http.Server with timeouts for security
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	log.Printf("Make A Longer Link running on http://localhost:%s", port) // #nosec G706 - port validated as numeric
+	log.Fatal(server.ListenAndServe())
 }
 
 // Security headers middleware
@@ -198,7 +214,9 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Template error: %v", err)
 		return
 	}
-	tmpl.Execute(w, nil)
+	if err := tmpl.Execute(w, nil); err != nil {
+		log.Printf("Template execute error: %v", err)
+	}
 }
 
 func handleLengthen(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +296,9 @@ func handleLengthen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("JSON encode error: %v", err)
+	}
 }
 
 func handleRedirect(w http.ResponseWriter, r *http.Request) {
@@ -335,7 +355,7 @@ func generateGibberish(length int) string {
 		randByte := make([]byte, 1)
 		rand.Read(randByte)
 		sound := sounds[int(randByte[0])%len(sounds)]
-		
+
 		if result.Len() > 0 {
 			result.WriteString("-")
 		}
