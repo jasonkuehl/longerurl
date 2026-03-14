@@ -26,7 +26,7 @@ WORKDIR /app
 COPY --from=builder /app/makealongerlink .
 
 # Expose port
-EXPOSE 8080
+EXPOSE 60320
 
 # Run the binary
 CMD ["./makealongerlink"]

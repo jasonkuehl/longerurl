@@ -23,7 +23,7 @@ While everyone else is busy shortening URLs, we're doing the exact opposite. Ent
 docker compose up -d
 ```
 
-Then visit http://localhost:8080
+Then visit http://localhost:60320
 
 ### Without Docker
 
@@ -57,7 +57,7 @@ Create a longer URL.
 ```json
 {
   "original": "https://example.com",
-  "long": "http://localhost:8080/r/a1b2c3d4e5...",
+  "long": "http://localhost:60320/r/a1b2c3d4e5...",
   "length": 900
 }
 ```
@@ -70,7 +70,7 @@ Redirects to the original URL.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| PORT     | 8080    | Server port |
+| PORT     | 60320   | Server port |
 
 ## Note
 

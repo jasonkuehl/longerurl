@@ -59,7 +59,7 @@ type LengthenResponse struct {
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "60320"
 	}
 
 	// Validate port to prevent log injection

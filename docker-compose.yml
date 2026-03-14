@@ -4,9 +4,9 @@ services:
     container_name: makealongerlink
     restart: unless-stopped
     ports:
-      - "60320:8080"
+      - "60320:60320"
     environment:
-      - PORT=8080
+      - PORT=60320
     # Optional: Add to your existing network
     # networks:
     #   - your_network
