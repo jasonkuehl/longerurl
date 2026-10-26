@@ -292,7 +292,7 @@ func handleRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect) // #nosec G710 - target checked by validateURL above; redirecting is this service's purpose
 }
 
 // encodeURLToSlug creates a deterministic long slug from a URL
