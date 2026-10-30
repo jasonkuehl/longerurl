@@ -15,7 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.27'
 
       - name: Verify dependencies
         run: go mod verify
@@ -39,7 +39,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.27'
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -54,7 +54,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.27'
 
       - name: golangci-lint
         # v7+ of the action installs golangci-lint v2, which .golangci.yml (version: "2") needs

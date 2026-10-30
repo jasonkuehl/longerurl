@@ -56,6 +56,22 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha
 
+      # Build once for scanning (amd64, not pushed); the build-and-push below reuses its cache
+      - name: Build image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          outputs: type=docker,dest=/tmp/image.tar
+
+      # Hadolint + Trivy (vulnerabilities, secrets) + SBOM; fails before anything is pushed
+      - name: Scan image
+        uses: https://git.yolo.fail/invader/ci-actions/scan-image@v1
+        with:
+          image-tar: /tmp/image.tar
+          dockerfile: Dockerfile
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
