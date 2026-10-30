@@ -57,6 +57,7 @@ jobs:
           go-version: '1.21'
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        # v7+ of the action installs golangci-lint v2, which .golangci.yml (version: "2") needs
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
