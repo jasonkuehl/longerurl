@@ -10,10 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: https://git.yolo.fail/actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: https://git.yolo.fail/actions/setup-go@v5
         with:
           go-version: '1.27'
 
@@ -27,37 +27,37 @@ jobs:
         run: go vet ./...
 
       - name: Run staticcheck
-        uses: dominikh/staticcheck-action@v1
+        uses: https://git.yolo.fail/actions/dominikh-staticcheck-action@v1
         with:
           version: "latest"
 
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: https://git.yolo.fail/actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: https://git.yolo.fail/actions/setup-go@v5
         with:
           go-version: '1.27'
 
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
+        uses: https://git.yolo.fail/actions/securego-gosec@master
         with:
           args: ./...
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: https://git.yolo.fail/actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: https://git.yolo.fail/actions/setup-go@v5
         with:
           go-version: '1.27'
 
       - name: golangci-lint
         # v7+ of the action installs golangci-lint v2, which .golangci.yml (version: "2") needs
-        uses: golangci/golangci-lint-action@v9
+        uses: https://git.yolo.fail/actions/golangci-lint-action@v9
         with:
           version: latest
