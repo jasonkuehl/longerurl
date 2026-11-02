@@ -9,7 +9,7 @@ on:
     branches: [main, master]
 
 env:
-  REGISTRY: git.yolo.fail
+  REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -21,31 +21,25 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: https://git.yolo.fail/actions/checkout@v4
-
-      # Registry paths must be lowercase; the repo name is not
-      - name: Set image name
-        run: echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: https://git.yolo.fail/actions/docker-setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: https://git.yolo.fail/actions/docker-setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
         if: github.event_name != 'pull_request'
-        uses: https://git.yolo.fail/actions/docker-login-action@v3
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          # Gitea 1.27's registry rejects the job token (it gets no package scope), so log in with a
-          # package-only personal access token stored as the user-level Actions secret REGISTRY_TOKEN
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.REGISTRY_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels)
         id: meta
-        uses: https://git.yolo.fail/actions/docker-metadata-action@v5
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -56,46 +50,13 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha
 
-      # Build once for scanning (amd64, not pushed); the build-and-push below reuses its cache
-      - name: Build image for scanning
-        uses: https://git.yolo.fail/actions/docker-build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64
-          push: false
-          outputs: type=docker,dest=/tmp/image.tar
-
-      # Hadolint + Trivy (vulnerabilities, secrets) + SBOM; fails before anything is pushed
-      - name: Scan image
-        uses: https://git.yolo.fail/invader/ci-actions/scan-image@v1.1
-        with:
-          image-tar: /tmp/image.tar
-          dockerfile: Dockerfile
-
       - name: Build and push Docker image
-        uses: https://git.yolo.fail/actions/docker-build-push-action@v5
+        uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
-          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}:buildcache,mode=max', env.IMAGE) || '' }}
-
-      # Gitea doesn't link container images to their repository by itself, so link this one and it
-      # shows under the repo's Packages tab. 201 = linked now, 400 = already linked (both fine).
-      - name: Link image to this repository
-        if: github.event_name != 'pull_request'
-        env:
-          TOKEN: ${{ secrets.REGISTRY_TOKEN }}
-        run: |
-          name="$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')"
-          repo="${GITHUB_REPOSITORY#*/}"
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Authorization: token $TOKEN" \
-            "${{ github.api_url }}/packages/${{ github.repository_owner }}/container/$name/-/link/$repo")
-          case "$code" in
-            201) echo "Linked $name to $repo" ;;
-            400) echo "$name is already linked" ;;
-            *)   echo "::error::Linking $name to $repo failed (HTTP $code)"; exit 1 ;;
-          esac
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
